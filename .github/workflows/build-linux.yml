@@ -7,7 +7,7 @@ on:
 env:
   AL_VERSION: 'latest'
   BCDEV_REPO: 'https://github.com/StefanMaron/BCDevOnLinux.git'
-  BCDEV_BRANCH: 'v2'
+  BCDEV_BRANCH: 'main'
 
 jobs:
   build-linux-full-test:
