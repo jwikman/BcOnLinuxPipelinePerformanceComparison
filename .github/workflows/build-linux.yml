@@ -374,9 +374,15 @@ jobs:
             exit 1
         fi
 
-        # Verify the config change was applied
+        # Verify the config change was applied correctly
         echo "Verifying authentication configuration..."
-        docker compose exec -T bc grep -m1 'ClientServicesCredentialType' '/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'
+        if docker compose exec -T bc grep -q 'ClientServicesCredentialType.*NavUserPassword' '/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'; then
+            echo "✓ Authentication configured for NavUserPassword"
+        else
+            echo "ERROR: Failed to configure NavUserPassword authentication"
+            docker compose exec -T bc grep 'ClientServicesCredentialType' '/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'
+            exit 1
+        fi
 
         cd ..
 
