@@ -318,6 +318,74 @@ jobs:
 
         cd ..
 
+    - name: Fix BC Authentication Configuration
+      run: |
+        echo "Fixing BC authentication configuration for NavUserPassword..."
+        cd bcdev-temp
+
+        # The BCDevOnLinux v2 container uses Windows authentication by default,
+        # but we need NavUserPassword for Basic auth via OData API.
+        # Update all CustomSettings.config files to use NavUserPassword.
+        docker compose exec -T bc bash -c "
+          echo 'Updating CustomSettings.config files to use NavUserPassword authentication...'
+          
+          # Update the source config files
+          for f in \$(find /home -name 'CustomSettings.config' 2>/dev/null); do
+            echo \"Updating: \$f\"
+            sed -i 's/ClientServicesCredentialType\" value=\"Windows\"/ClientServicesCredentialType\" value=\"NavUserPassword\"/' \"\$f\"
+          done
+          
+          # Update the BC Server config in Wine prefix
+          BC_CONFIG='/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'
+          if [ -f \"\$BC_CONFIG\" ]; then
+            echo 'Updating BC Service config...'
+            sed -i 's/ClientServicesCredentialType\" value=\"Windows\"/ClientServicesCredentialType\" value=\"NavUserPassword\"/' \"\$BC_CONFIG\"
+            echo 'Verified:'
+            grep -m1 'ClientServicesCredentialType' \"\$BC_CONFIG\"
+          fi
+        "
+
+        # Restart the container to apply the config change
+        echo "Restarting BC container to apply authentication config..."
+        docker compose restart bc
+
+        # Wait for container to become healthy again
+        echo "Waiting for BC container to become healthy after restart..."
+        CONTAINER_NAME=$(docker compose ps -q bc)
+        MAX_WAIT=300  # 5 minutes should be enough for restart
+        ELAPSED=0
+
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+            HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_NAME 2>/dev/null || echo "unknown")
+
+            if [ "$HEALTH_STATUS" = "healthy" ]; then
+                echo "✓ BC container is healthy after restart"
+                break
+            fi
+
+            echo "Container status: $HEALTH_STATUS (waited ${ELAPSED}s / ${MAX_WAIT}s)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+        done
+
+        if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "ERROR: Container did not become healthy after restart"
+            docker compose logs --tail=50
+            exit 1
+        fi
+
+        # Verify the config change was applied correctly
+        echo "Verifying authentication configuration..."
+        if docker compose exec -T bc grep -q 'ClientServicesCredentialType.*NavUserPassword' '/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'; then
+            echo "✓ Authentication configured for NavUserPassword"
+        else
+            echo "ERROR: Failed to configure NavUserPassword authentication"
+            docker compose exec -T bc grep 'ClientServicesCredentialType' '/root/.local/share/wineprefixes/bc1/drive_c/Program Files/Microsoft Dynamics NAV/260/Service/CustomSettings.config'
+            exit 1
+        fi
+
+        cd ..
+
     - name: Publish AL Extension to Container
       run: |
         echo "Publishing AL extension to BC container..."
