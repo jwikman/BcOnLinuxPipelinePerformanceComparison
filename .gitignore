@@ -22,3 +22,6 @@ Thumbs.db
 # Temporary files
 temp*/
 *.tmp
+
+# BCDevOnLinux cloned for testing
+bcdev-temp/
