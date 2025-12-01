@@ -1,4 +1,4 @@
-# Docker Compose override for CI/CD pipeline
+# Docker Compose override for Business Central authentication configuration
 # This file is merged with BCDevOnLinux's compose.yml to override settings
 #
 # Purpose: Set ClientServicesCredentialType to NavUserPassword for Basic auth
