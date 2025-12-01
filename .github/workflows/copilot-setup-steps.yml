@@ -255,13 +255,29 @@ jobs:
         echo "BASE_IMAGE_PULL_DURATION=$BASE_IMAGE_PULL_DURATION" >> $GITHUB_ENV
         echo "Base image pull took: $BASE_IMAGE_PULL_DURATION seconds"
 
+    - name: Configure BC Authentication via Docker Compose Override
+      run: |
+        echo "Configuring BC authentication for NavUserPassword via compose override..."
+        
+        # Copy the compose override file and patched CustomSettings.config
+        # This sets ClientServicesCredentialType=NavUserPassword during container build
+        # instead of patching after startup (saves ~3 minutes by avoiding restart)
+        cp config/compose.override.yml bcdev-temp/compose.override.yml
+        cp config/CustomSettings.override.config bcdev-temp/CustomSettings.override.config
+        
+        echo "Compose override files copied to bcdev-temp/"
+        ls -la bcdev-temp/*.override.*
+        
+        # Verify the authentication setting
+        grep 'ClientServicesCredentialType' bcdev-temp/CustomSettings.override.config | head -n1
+
     - name: Build BC Container with Docker Compose
       run: |
         echo "Building Business Central container..."
 
         cd bcdev-temp
 
-        # Build the container using docker compose
+        # Build the container using docker compose (override file is auto-merged)
         docker compose build
 
         CONTAINER_BUILD_END=$(date +%s.%N)

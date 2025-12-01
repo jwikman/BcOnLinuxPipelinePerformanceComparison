@@ -1,0 +1,15 @@
+# Docker Compose override for CI/CD pipeline
+# This file is merged with BCDevOnLinux's compose.yml to override settings
+#
+# Purpose: Set ClientServicesCredentialType to NavUserPassword for Basic auth
+# This allows the OData API to authenticate with username/password instead of Windows auth
+#
+# Usage: Copy this file to the BCDevOnLinux directory before running docker compose
+
+services:
+  bc:
+    volumes:
+      # Override the default CustomSettings.config with our NavUserPassword version
+      # The config file is copied to /home/CustomSettings.config in the Dockerfile
+      # and then copied to the BC Server directory on container start
+      - ./CustomSettings.override.config:/home/CustomSettings.config:ro
